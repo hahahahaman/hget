@@ -1,6 +1,8 @@
 import math
+import os
 import urllib.request
 import urllib.parse
+from urllib.request import urlretrieve
 from html.parser import HTMLParser
 
 class GalleryParser(HTMLParser):
@@ -106,7 +108,8 @@ gallery_parser = GalleryParser()
 link_parser = GalleryImageLinkParser()
 image_parser = ImageParser()
 
-url = 'https://e-hentai.org/g/939026/3594918bd8/index.html'
+url = 'https://e-hentai.org/g/939026/3594918bd8/'
+output_directory = 'test/'
 
 headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -127,20 +130,31 @@ print(gallery_parser.num_images)
 
 img_urls = []
 for i in range(0, gallery_parser.num_pages):
+    # print(url+'?p='+str(i))
     request = urllib.request.Request(url+'?p='+str(i), None, headers)
 
     with urllib.request.urlopen(request) as response:
         html = str(response.read().decode('utf8'))
         link_parser.feed(html)
 
-    print(link_parser.urls)
+for u in link_parser.urls:
+    request = urllib.request.Request(u, None, headers)
 
-    for url in link_parser.urls:
-        request = urllib.request.Request(url, None, headers)
+    with urllib.request.urlopen(request) as response:
+        html = str(response.read().decode('utf8'))
+        image_parser.feed(html)
+        img_urls.append(image_parser.image_url)
 
-        with urllib.request.urlopen(request) as response:
-            html = str(response.read().decode('utf8'))
-            image_parser.feed(html)
-            img_urls.append(image_parser.image_url)
-
+print(link_parser.urls)
 print(img_urls)
+
+print('Creating Directory')
+os.makedirs(output_directory, exist_ok=True)
+
+for u in img_urls:
+    # Download the images
+
+    request = urllib.request.Request(u, None, headers)
+    image_name = u.split('/')[-1]
+    print(image_name)
+    urlretrieve(u, output_directory + image_name)
