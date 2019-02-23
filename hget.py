@@ -5,6 +5,10 @@ import urllib.parse
 from urllib.request import urlretrieve
 from html.parser import HTMLParser
 
+# Parses the gallery for
+# Title
+# number of pages
+# number of images
 class GalleryParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
@@ -13,7 +17,8 @@ class GalleryParser(HTMLParser):
         self.title=''
         self.title_encountered = False
 
-        # Galleries have 2 identical tables to change the page
+        #Search for the string which displays the number of images in the
+        #gallery.
         self.images_string_encountered = False
 
     def handle_starttag(self, tag, attrs):
@@ -50,6 +55,7 @@ class GalleryParser(HTMLParser):
 
         # print("Encountered some data  :", data)
 
+# Parses each page of the gallery for the link url
 class GalleryImageLinkParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
@@ -75,6 +81,7 @@ class GalleryImageLinkParser(HTMLParser):
     def handle_data(self, data):
         return
 
+# parses the link for the actual image url
 class ImageParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
@@ -128,15 +135,19 @@ print(gallery_parser.title)
 print(gallery_parser.num_pages)
 print(gallery_parser.num_images)
 
-img_urls = []
+# parse each page of the gallery
 for i in range(0, gallery_parser.num_pages):
-    # print(url+'?p='+str(i))
+    print(url+'?p='+str(i))
     request = urllib.request.Request(url+'?p='+str(i), None, headers)
 
     with urllib.request.urlopen(request) as response:
         html = str(response.read().decode('utf8'))
         link_parser.feed(html)
 
+print(link_parser.urls)
+
+# parse each link for the image url
+img_urls = []
 for u in link_parser.urls:
     request = urllib.request.Request(u, None, headers)
 
@@ -145,16 +156,13 @@ for u in link_parser.urls:
         image_parser.feed(html)
         img_urls.append(image_parser.image_url)
 
-print(link_parser.urls)
 print(img_urls)
 
 print('Creating Directory')
 os.makedirs(output_directory, exist_ok=True)
 
+# Download the images
 for u in img_urls:
-    # Download the images
-
-    request = urllib.request.Request(u, None, headers)
     image_name = u.split('/')[-1]
     print(image_name)
     urlretrieve(u, output_directory + image_name)
