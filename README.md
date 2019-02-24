@@ -11,7 +11,7 @@ Requires [lxml](https://lxml.de/installation.html) and Python 3.4+.
 ```
 python hget.py URLs...
 
-python hget.py  URLs... -o /path/to/directory/
+python hget.py URLs... -o /path/to/directory/
 ```
 
 #### To download using a textfile of urls:
