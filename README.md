@@ -14,7 +14,7 @@ python hget.py URLs...
 python hget.py  URLs... -o /path/to/directory/
 ```
 
-##### To download using a textfile of urls:
+#### To download using a textfile of urls:
 
 ```
 https://e-hentai.org/g/1271534/be3dc157c2/
@@ -30,10 +30,10 @@ Then:
 cat file.txt | xargs python hget.py
 ```
 
-##### Login and Download:
+#### Login and Download:
 
 ```
-python hget.py  URLs... --user Weeb --pass Lord -o /path/to/directory/
+python hget.py  URLs... --username Weeb --password Lord -o /path/to/directory/
 ```
 
 
