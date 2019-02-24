@@ -6,7 +6,7 @@ Requires [lxml](https://lxml.de/installation.html) and Python 3.4+.
 
 ### Usage
 
-##### Download Galleries:
+#### Download Galleries:
 
 ```
 python hget.py URLs...
@@ -23,8 +23,6 @@ https://e-hentai.org/g/939026/3594918bd8/
 .
 .
 ```
-
-Then:
 
 ```
 cat file.txt | xargs python hget.py
