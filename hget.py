@@ -1,12 +1,13 @@
-import math
-import os
-import urllib.request
-import urllib.parse
-from urllib.request import urlretrieve
+import math, os, sys, getopt
+import urllib.request, urllib.parse, requests
+from lxml import html
 from html.parser import HTMLParser
 
+##################################################
+## Parser Classes
+
 # Parses the gallery for
-# Title
+# title
 # number of pages
 # number of images
 class GalleryParser(HTMLParser):
@@ -23,13 +24,13 @@ class GalleryParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         if(tag == 'h1'): # Finding the title: <h1 id='gn'> TITLE </h1>
-            for attr in attrs:
-                if(attr[0] == 'id' and attr[1] == 'gn'):
+            for name, val in attrs:
+                if(name == 'id' and val == 'gn'):
                     self.title_encountered = True
                     break
         elif(tag == 'p'): # Get number of images and pages
-            for attr in attrs:
-                if(attr[0] == 'class' and attr[1] == 'gpc'):
+            for name, val in attrs:
+                if(name == 'class' and val == 'gpc'):
                     self.images_string_encountered = True
                     break
 
@@ -64,14 +65,14 @@ class GalleryImageLinkParser(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         if(tag == 'div'):
-            for attr in attrs:
-                if(attr[0] == 'class' and attr[1] == 'gdtm'):
+            for name, val in attrs:
+                if(name == 'class' and val == 'gdtm'):
                     self.is_next_link_image = True
                     break
         elif(self.is_next_link_image and tag == 'a'):
-            for attr in attrs:
-                if(attr[0] == 'href'):
-                    self.urls.append(attr[1])
+            for name, val in attrs:
+                if(name == 'href'):
+                    self.urls.append(val)
                     self.is_next_link_image = False
                     break
 
@@ -111,58 +112,175 @@ class ImageParser(HTMLParser):
         # print("Encountered some data  :", data)
         return
 
-gallery_parser = GalleryParser()
-link_parser = GalleryImageLinkParser()
-image_parser = ImageParser()
 
-url = 'https://e-hentai.org/g/939026/3594918bd8/'
-output_directory = 'test/'
+##################################################
 
-headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
-       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-       'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-       'Accept-Encoding': 'none',
-       'Accept-Language': 'en-US,en;q=0.8',
-       'Connection': 'keep-alive'}
+##################################################
+## Initialization + handle command line arguments
 
-request = urllib.request.Request(url, None, headers)
+username = ''
+password = ''
 
-with urllib.request.urlopen(request) as response:
-    html = str(response.read().decode('utf8'))
-    gallery_parser.feed(html)
+gallery_urls = sys.argv[1:] # list of arguments from terminal
+current_directory = os.path.dirname(os.path.realpath(__file__))
+output_directory = os.path.join(current_directory, 'hget_downloads')
 
-print(gallery_parser.title)
-print(gallery_parser.num_pages)
-print(gallery_parser.num_images)
+def print_usage():
+    print('\nOptions and arguments:')
+    print('-h --help          : print this help info.')
+    print('-o --output DIR    : set output directory to DIR.')
+    print('-p --password PASS : set password to PASS')
+    print('-u --username USER : set username to USER')
+    print('\nDownload galleries (default directory is ./hget_downloads/):\n\n', '   python hget.py URL1 URL2...\n')
+    print('    python hget.py URL... -o /path/to/directory\n')
+    print('    python hget.py URLs... --username Username --password Password -o /path/to/directory/')
 
-# parse each page of the gallery
-for i in range(0, gallery_parser.num_pages):
-    print(url+'?p='+str(i))
-    request = urllib.request.Request(url+'?p='+str(i), None, headers)
+
+# if no arguments then exit
+if len(sys.argv) == 1:
+    print_usage()
+    sys.exit()
+
+# get all the options
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "ho:p:u:", ['help', 'output=', 'username=', 'password='])
+except getopt.GetoptError:
+    print('Option error!')
+    print_usage()
+    sys.exit(2)
+
+for opt, arg in opts:
+    if opt in ('-h', '--help'):
+        print_usage()
+        sys.exit()
+    elif opt in ('-o', '--output'):
+        if(os.path.isabs(arg)):
+            # if path is absolute, replace the output directory
+            output_directory = arg
+        else:
+            output_directory = os.path.join(current_directory, arg)
+    elif opt in ('-u', '--username'):
+        username = arg
+    elif opt in ('-p', '--password'):
+        password = arg
+
+    # remove opt and arg from the list of arguments
+    gallery_urls.remove(opt)
+    gallery_urls.remove(arg)
+
+gallery_urls = list(set(gallery_urls)) # remove duplicate urls
+
+if len(gallery_urls) == 0:
+    print('No URLs.')
+    print_usage()
+    sys.exit()
+
+headers={"User-Agent":"Mozilla/5.0 (X11; Linux i686) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/36.0.1985.125 Safari/537.36",
+         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+         'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+         'Accept-Encoding': 'none',
+         'Accept-Language': 'en-US,en;q=0.8',
+         'Connection': 'keep-alive'}
+
+
+session = requests.Session()
+
+if username == '' or password == '':
+    print('No Login.')
+else:
+    print('Logging in...')
+
+    login_url = 'https://forums.e-hentai.org/index.php?act=Login&CODE=01'
+
+    login = session.get(login_url)
+    login_html = html.fromstring(login.text)
+    hidden_inputs = login_html.xpath(r'//form//input[@type="hidden"]')
+    form = {x.attrib["name"]: x.attrib["value"] for x in hidden_inputs}
+    form['UserName'] = username
+    form['PassWord'] = password
+
+    response = session.post(login_url, data=form)
+
+    headers['Cookie'] = "; ".join('%s=%s' % (k,v) for k,v in session.cookies.get_dict().items())
+
+
+# print(headers['Cookie'])
+# print(session.cookies)
+
+#####################################################
+
+#####################################################
+## Function to download a gallery
+
+def download_gallery(url):
+
+    gallery_parser = GalleryParser()
+    link_parser = GalleryImageLinkParser()
+    image_parser = ImageParser()
+
+
+
+    request = urllib.request.Request(url, None, headers)
 
     with urllib.request.urlopen(request) as response:
         html = str(response.read().decode('utf8'))
-        link_parser.feed(html)
+        gallery_parser.feed(html)
 
-print(link_parser.urls)
+    print('Title:', gallery_parser.title)
+    print('Number of pages:', gallery_parser.num_pages)
+    print('Number of images:', gallery_parser.num_images)
 
-# parse each link for the image url
-img_urls = []
-for u in link_parser.urls:
-    request = urllib.request.Request(u, None, headers)
+    # Make sure the directory exists
+    gallery_directory = os.path.join(output_directory, gallery_parser.title)
 
-    with urllib.request.urlopen(request) as response:
-        html = str(response.read().decode('utf8'))
-        image_parser.feed(html)
-        img_urls.append(image_parser.image_url)
+    if(os.path.exists(gallery_directory)):
+        print('Directory ', gallery_directory, 'already exists.')
+        print('Skipping.')
+        return
+    else:
+        os.makedirs(gallery_directory, exist_ok=True)
+        print('Directory:', gallery_directory, 'created.')
 
-print(img_urls)
+    # parse each page of the gallery
+    for i in range(0, gallery_parser.num_pages):
+        # print(url+'?p='+str(i))
+        request = urllib.request.Request(url+'?p='+str(i), None, headers)
 
-print('Creating Directory')
-os.makedirs(output_directory, exist_ok=True)
+        with urllib.request.urlopen(request) as response:
+            html = str(response.read().decode('utf8'))
+            link_parser.feed(html)
 
-# Download the images
-for u in img_urls:
-    image_name = u.split('/')[-1]
-    print(image_name)
-    urlretrieve(u, output_directory + image_name)
+    # parse each link for its image url
+    img_urls = []
+    for url in link_parser.urls:
+        request = urllib.request.Request(url, None, headers)
+
+        with urllib.request.urlopen(request) as response:
+            html = str(response.read().decode('utf8'))
+            print("Finding image url: ", len(img_urls),'/', gallery_parser.num_images, end='\r')
+            image_parser.feed(html)
+            img_urls.append(image_parser.image_url)
+
+
+    # Download the images
+    for id, url in enumerate(img_urls):
+        filename = url.rsplit('/', 1)[1]
+
+        print("Downloading image: ", id+1, '/', gallery_parser.num_images, end='\r')
+
+        try:
+            filepath = os.path.join(gallery_directory, filename)
+            urllib.request.urlretrieve(url, filepath)
+        except:
+             print("Timedout on page: ", id+1, '/', gallery_parser.num_images, " File: ", filename)
+
+
+# Print urls
+print("\nURLS:")
+for url in gallery_urls:
+      print(url.rstrip())
+
+# Download each gallery
+for i, url in enumerate(gallery_urls):
+    print('\n' + str(i+1) + '.', 'Downloading', url)
+    download_gallery(url.rstrip()) # remove white space
