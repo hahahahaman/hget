@@ -64,14 +64,14 @@ class GalleryImageLinkParser(HTMLParser):
         self.urls = []
 
     def handle_starttag(self, tag, attrs):
-        if(tag == 'div'):
+        if tag == 'div':
             for name, val in attrs:
-                if(name == 'class' and val == 'gdtm'):
+                if name == 'class' and val == 'gdtm':
                     self.is_next_link_image = True
                     break
-        elif(self.is_next_link_image and tag == 'a'):
+        elif self.is_next_link_image and tag == 'a':
             for name, val in attrs:
-                if(name == 'href'):
+                if name == 'href':
                     self.urls.append(val)
                     self.is_next_link_image = False
                     break
@@ -87,21 +87,19 @@ class ImageParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
         self.image_url = ''
+        self.is_next_link_image = False
 
     def handle_starttag(self, tag, attrs):
-        # print("Encountered a start tag:", tag)
-        # for attr in attrs:
-        #     print("     attr:", attr)
-        if(tag == 'img'):
-            src = ''
-            should_keep = False
-            for attr in attrs:
-                if(attr[0] == 'id' and attr[1] == 'img'):
-                    should_keep = True
-                elif(attr[0] == 'src'):
-                    src = attr[1]
-            if(should_keep):
-                self.image_url = src
+        if tag == 'div':
+            for name, val in attrs:
+                if(name == 'id' and val == 'i7'):
+                    self.is_next_link_image = True
+        elif tag == 'a' and self.is_next_link_image:
+            for name, val in attrs:
+                if name == 'href':
+                    self.image_url = val
+                    self.is_next_link_image = False
+                    # print(val)
         return
 
     def handle_endtag(self, tag):
@@ -111,7 +109,6 @@ class ImageParser(HTMLParser):
     def handle_data(self, data):
         # print("Encountered some data  :", data)
         return
-
 
 ##################################################
 
@@ -135,7 +132,6 @@ def print_usage():
     print('    python hget.py URL... -o /path/to/directory\n')
     print('    python hget.py URLs... --username Username --password Password -o /path/to/directory/')
 
-
 # if no arguments then exit
 if len(sys.argv) == 1:
     print_usage()
@@ -154,7 +150,7 @@ for opt, arg in opts:
         print_usage()
         sys.exit()
     elif opt in ('-o', '--output'):
-        if(os.path.isabs(arg)):
+        if os.path.isabs(arg):
             # if path is absolute, replace the output directory
             output_directory = arg
         else:
@@ -203,7 +199,6 @@ else:
 
     headers['Cookie'] = "; ".join('%s=%s' % (k,v) for k,v in session.cookies.get_dict().items())
 
-
 # print(headers['Cookie'])
 # print(session.cookies)
 
@@ -217,8 +212,6 @@ def download_gallery(url):
     gallery_parser = GalleryParser()
     link_parser = GalleryImageLinkParser()
     image_parser = ImageParser()
-
-
 
     request = urllib.request.Request(url, None, headers)
 
@@ -264,16 +257,23 @@ def download_gallery(url):
 
     # Download the images
     for id, url in enumerate(img_urls):
-        filename = url.rsplit('/', 1)[1]
-
         print("Downloading image: ", id+1, '/', gallery_parser.num_images, end='\r')
 
-        try:
-            filepath = os.path.join(gallery_directory, filename)
-            urllib.request.urlretrieve(url, filepath)
-        except:
-             print("Timedout on page: ", id+1, '/', gallery_parser.num_images, " File: ", filename)
+        filepath = os.path.join(gallery_directory, str(id+1)+'.jpg')
+        request = urllib.request.Request(url, None, headers)
+        # try:
+        with urllib.request.urlopen(request) as response:
+            data = response.read()
 
+            with open(filepath, 'wb') as f:
+                f.write(data)
+        # except:
+        #      print("Timedout on page: ", id+1, '/', gallery_parser.num_images, " File: ", filename)
+
+##############################################
+
+##############################################
+### Download everything
 
 # Print urls
 print("\nURLS:")

@@ -1,6 +1,7 @@
 ## hget 
 
-Download galleries from e-hentai.
+Download galleries from e-hentai (downloads the original images
+only).
 
 Requires [lxml](https://lxml.de/installation.html) and Python 3.4+.
 
