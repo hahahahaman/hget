@@ -118,6 +118,8 @@ class ImageParser(HTMLParser):
 username = ''
 password = ''
 
+HD = False
+
 gallery_urls = sys.argv[1:] # list of arguments from terminal
 current_directory = os.path.dirname(os.path.realpath(__file__))
 output_directory = os.path.join(current_directory, 'hget_downloads')
@@ -125,12 +127,13 @@ output_directory = os.path.join(current_directory, 'hget_downloads')
 def print_usage():
     print('\nOptions and arguments:')
     print('-h --help          : print this help info.')
+    print('--hd               : get the hd original images (requires logging in).')
     print('-o --output DIR    : set output directory to DIR.')
     print('-p --password PASS : set password to PASS')
     print('-u --username USER : set username to USER')
     print('\nDownload galleries (default directory is ./hget_downloads/):\n\n', '   python hget.py URL1 URL2...\n')
     print('    python hget.py URL... -o /path/to/directory\n')
-    print('    python hget.py URLs... --username Username --password Password -o /path/to/directory/')
+    print('    python hget.py URLs... --hd --username Username --password Password -o /path/to/directory/')
 
 # if no arguments then exit
 if len(sys.argv) == 1:
@@ -139,7 +142,7 @@ if len(sys.argv) == 1:
 
 # get all the options
 try:
-    opts, args = getopt.getopt(sys.argv[1:], "ho:p:u:", ['help', 'output=', 'username=', 'password='])
+    opts, args = getopt.getopt(sys.argv[1:], "ho:p:u:", ['help', 'hd', 'output=', 'username=', 'password='])
 except getopt.GetoptError:
     print('Option error!')
     print_usage()
@@ -149,6 +152,8 @@ for opt, arg in opts:
     if opt in ('-h', '--help'):
         print_usage()
         sys.exit()
+    elif opt in ('--hd'):
+        HD = True
     elif opt in ('-o', '--output'):
         if os.path.isabs(arg):
             # if path is absolute, replace the output directory
@@ -259,14 +264,24 @@ def download_gallery(url):
     for id, url in enumerate(img_urls):
         print("Downloading image: ", id+1, '/', gallery_parser.num_images, end='\r')
 
-        filepath = os.path.join(gallery_directory, str(id+1)+'.jpg')
-        request = urllib.request.Request(url, None, headers)
-        # try:
-        with urllib.request.urlopen(request) as response:
-            data = response.read()
+        if HD:
+            filepath = os.path.join(gallery_directory, str(id+1)+'.jpg')
+            request = urllib.request.Request(url, None, headers)
 
-            with open(filepath, 'wb') as f:
-                f.write(data)
+            with urllib.request.urlopen(request) as response:
+                data = response.read()
+
+                with open(filepath, 'wb') as f:
+                    f.write(data)
+        else:
+            filename = url.rsplit('/', 1)[1]
+            try:
+                filepath = os.path.join(gallery_directory, filename)
+                urllib.request.urlretrieve(url, filepath)
+            except:
+                print("Timedout on page: ", id+1, '/', gallery_parser.num_images, " File: ", filename)
+
+
         # except:
         #      print("Timedout on page: ", id+1, '/', gallery_parser.num_images, " File: ", filename)
 
