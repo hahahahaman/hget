@@ -29,10 +29,10 @@ https://e-hentai.org/g/939026/3594918bd8/
 cat file.txt | xargs python hget.py
 ```
 
-#### Login and Download:
+#### Login and Download HD images:
 
 ```
-python hget.py  URLs... --username Weeb --password Lord -o /path/to/directory/
+python hget.py  URLs... --hd --username Weeb --password Lord -o /path/to/directory/
 ```
 
 

@@ -281,7 +281,6 @@ def download_gallery(url):
             except:
                 print("Timedout on page: ", id+1, '/', gallery_parser.num_images, " File: ", filename)
 
-
         # except:
         #      print("Timedout on page: ", id+1, '/', gallery_parser.num_images, " File: ", filename)
 
