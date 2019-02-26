@@ -90,17 +90,29 @@ class ImageParser(HTMLParser):
         self.is_next_link_image = False
 
     def handle_starttag(self, tag, attrs):
-        if tag == 'div':
-            for name, val in attrs:
-                if(name == 'id' and val == 'i7'):
-                    self.is_next_link_image = True
-        elif tag == 'a' and self.is_next_link_image:
-            for name, val in attrs:
-                if name == 'href':
-                    self.image_url = val
-                    self.is_next_link_image = False
-                    # print(val)
-        return
+        if HD:
+            if tag == 'div':
+                for name, val in attrs:
+                    if(name == 'id' and val == 'i7'):
+                        self.is_next_link_image = True
+            elif tag == 'a' and self.is_next_link_image:
+                for name, val in attrs:
+                    if name == 'href':
+                        self.image_url = val
+                        self.is_next_link_image = False
+                        # print(val)
+        else:
+            if(tag == 'img'):
+                src = ''
+                should_keep = False
+                for attr in attrs:
+                    if(attr[0] == 'id' and attr[1] == 'img'):
+                        should_keep = True
+                    elif(attr[0] == 'src'):
+                        src = attr[1]
+                    if(should_keep):
+                        self.image_url = src
+
 
     def handle_endtag(self, tag):
         # print("Encountered an end tag :", tag)
