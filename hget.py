@@ -160,7 +160,6 @@ except getopt.GetoptError:
     print_usage()
     sys.exit(2)
 
-print(gallery_urls)
 for opt, arg in opts:
     if opt in ('-h', '--help'):
         print_usage()
@@ -178,7 +177,6 @@ for opt, arg in opts:
     elif opt in ('-p', '--password'):
         password = arg
 
-    print(opt, arg)
     # remove opt and arg from the list of arguments
     if(opt != ''):
         gallery_urls.remove(opt)
