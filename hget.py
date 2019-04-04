@@ -87,31 +87,31 @@ class ImageParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
         self.image_url = ''
+        self.image_hd_url = ''
         self.is_next_link_image = False
 
     def handle_starttag(self, tag, attrs):
-        if HD:
-            if tag == 'div':
-                for name, val in attrs:
-                    if(name == 'id' and val == 'i7'):
-                        self.is_next_link_image = True
-            elif tag == 'a' and self.is_next_link_image:
-                for name, val in attrs:
-                    if name == 'href':
-                        self.image_url = val
-                        self.is_next_link_image = False
-                        # print(val)
-        else:
-            if(tag == 'img'):
-                src = ''
-                should_keep = False
-                for attr in attrs:
-                    if(attr[0] == 'id' and attr[1] == 'img'):
-                        should_keep = True
-                    elif(attr[0] == 'src'):
-                        src = attr[1]
-                    if(should_keep):
-                        self.image_url = src
+        if tag == 'div':
+            for name, val in attrs:
+                if(name == 'id' and val == 'i7'):
+                    self.is_next_link_image = True
+        elif tag == 'a' and self.is_next_link_image:
+            for name, val in attrs:
+                if name == 'href':
+                    self.image_hd_url = val
+                    self.is_next_link_image = False
+                    # print(val)
+
+        if(tag == 'img'):
+            src = ''
+            should_keep = False
+            for attr in attrs:
+                if(attr[0] == 'id' and attr[1] == 'img'):
+                    should_keep = True
+                elif(attr[0] == 'src'):
+                    src = attr[1]
+                if(should_keep):
+                    self.image_url = src
 
 
     def handle_endtag(self, tag):
@@ -272,7 +272,9 @@ def download_gallery(url):
             html = str(response.read().decode('utf8'))
             print("Finding image url: ", len(img_urls),'/', gallery_parser.num_images, end='\r')
             image_parser.feed(html)
-            img_urls.append(image_parser.image_url)
+            # print(image_parser.image_hd_url, image_parser.image_url)
+            image_url = image_parser.image_hd_url if (HD == True and image_parser.image_hd_url != '' and image_parser.image_hd_url != 'https://e-hentai.org/') else image_parser.image_url
+            img_urls.append(image_url)
 
 
     # Download the images
